@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VAE Random Image Generator</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1050px;
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            color: #111827;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+
+        .latent-box {
+            width: 350px;
+            max-width: 100%;
+            aspect-ratio: 1;
+            margin: 30px auto;
+            border: 2px solid #111827;
+            position: relative;
+            background-image:
+                linear-gradient(to right, #ddd 1px, transparent 1px),
+                linear-gradient(to bottom, #ddd 1px, transparent 1px);
+            background-size: 25% 25%;
+        }
+
+        .horizontal-axis {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: #111827;
+            top: 50%;
+            left: 0;
+        }
+
+        .vertical-axis {
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            background: #111827;
+            left: 50%;
+            top: 0;
+        }
+
+        .point {
+            width: 18px;
+            height: 18px;
+            background: #dc2626;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            display: none;
+            pointer-events: none;
+        }
+
+        .axis-label {
+            position: absolute;
+            font-weight: bold;
+        }
+
+        .z2-label {
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .z1-label {
+            right: 0;
+            bottom: -30px;
+        }
+
+        .values {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .value-box {
+            background: #eef2f7;
+            padding: 10px 16px;
+            border-radius: 8px;
+            min-width: 120px;
+        }
+
+        button {
+            border: none;
+            padding: 13px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 25px;
+        }
+
+        #generateBtn {
+            background: #111827;
+            color: white;
+            width: 80%;
+        }
+
+        #generateBtn:hover {
+            opacity: 0.9;
+        }
+
+        #generatedImageBox {
+            width: 350px;
+            height: 350px;
+            max-width: 100%;
+            margin: 30px auto;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+        }
+
+        #generatedImage {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+            display: none;
+        }
+
+        #placeholder {
+            color: white;
+            padding: 20px;
+        }
+
+        .loading {
+            margin-top: 15px;
+            color: #2563eb;
+            font-weight: bold;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .info {
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .success {
+            color: #15803d;
+            font-weight: bold;
+        }
+
+        @media (max-width: 800px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>VAE Random Image Generator</h1>
+
+    <p class="subtitle">
+        Every generation samples a new point from the latent distribution
+        <strong>N(0, I)</strong>.
+    </p>
+
+    <div class="main-container">
+
+        <div class="card">
+            <h2>Random Latent Sample</h2>
+
+            <div id="latentBox" class="latent-box">
+                <div class="horizontal-axis"></div>
+                <div class="vertical-axis"></div>
+                <div id="point" class="point"></div>
+
+                <div class="axis-label z2-label">Z2 ↑</div>
+                <div class="axis-label z1-label">Z1 →</div>
+            </div>
+
+            <div class="values">
+                <div class="value-box">
+                    <strong>Z1:</strong>
+                    <span id="z1Value">0.00</span>
+                </div>
+
+                <div class="value-box">
+                    <strong>Z2:</strong>
+                    <span id="z2Value">0.00</span>
+                </div>
+            </div>
+
+            <button id="generateBtn">
+                Generate Random Image
+            </button>
+
+            <p class="info">
+                The latent vector is sampled automatically by the server.
+                No input image is reconstructed.
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>Generated Image</h2>
+
+            <div id="generatedImageBox">
+                <p id="placeholder">
+                    Click "Generate Random Image"
+                </p>
+
+                <img
+                    id="generatedImage"
+                    alt="Randomly generated MNIST image"
+                >
+            </div>
+
+            <p id="latentInfo">
+                Latent Vector: [0.00, 0.00]
+            </p>
+
+            <p id="status" class="success"></p>
+
+            <div id="loading" class="loading hidden">
+                Sampling latent vector and generating image...
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const latentBox = document.getElementById("latentBox");
+    const point = document.getElementById("point");
+    const z1Value = document.getElementById("z1Value");
+    const z2Value = document.getElementById("z2Value");
+    const generateBtn = document.getElementById("generateBtn");
+    const generatedImage = document.getElementById("generatedImage");
+    const placeholder = document.getElementById("placeholder");
+    const loading = document.getElementById("loading");
+    const latentInfo = document.getElementById("latentInfo");
+    const status = document.getElementById("status");
+
+    function updateLatentDisplay(latent) {
+        const z1 = latent[0];
+        const z2 = latent[1];
+
+        z1Value.textContent = z1.toFixed(3);
+        z2Value.textContent = z2.toFixed(3);
+
+        latentInfo.textContent =
+            `Latent Vector: [${z1.toFixed(3)}, ${z2.toFixed(3)}]`;
+
+        // Display values inside the visible [-3, +3] explorer area.
+        const xPercent = Math.max(
+            0,
+            Math.min(100, ((z1 + 3) / 6) * 100)
+        );
+
+        const yPercent = Math.max(
+            0,
+            Math.min(100, ((3 - z2) / 6) * 100)
+        );
+
+        point.style.left = xPercent + "%";
+        point.style.top = yPercent + "%";
+        point.style.display = "block";
+    }
+
+    async function generateImage() {
+        loading.classList.remove("hidden");
+        generateBtn.disabled = true;
+        status.textContent = "";
+
+        try {
+            const response = await fetch("/generate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({})
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || "Generation failed.");
+            }
+
+            updateLatentDisplay(data.latent);
+
+            generatedImage.src =
+                "data:image/png;base64," + data.image;
+
+            generatedImage.style.display = "block";
+            placeholder.style.display = "none";
+
+            status.textContent =
+                "New image generated from a random latent sample.";
+
+        } catch (error) {
+            console.error(error);
+            alert("Error generating image: " + error.message);
+        } finally {
+            loading.classList.add("hidden");
+            generateBtn.disabled = false;
+        }
+    }
+
+    generateBtn.addEventListener("click", generateImage);
+</script>
+
+</body>
+</html>
